@@ -14,7 +14,7 @@ def aes_encrypt_file(input_file, key):
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))        #modo de cifrar (o algorítmo: (AES) e o modo: (CTR))
     encryptor = cipher.encryptor()                                #??????????????
 
-    ciphertext = encryptor.update(text) + encryptor.finalize()    #encriptar o texto
+    ciphertext = encryptor.update(text) + encryptor.finalize()    #encriptar o texto + termina o processo
 
     return nonce, ciphertext                                      #return texto encriptado
 
