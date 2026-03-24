@@ -37,9 +37,9 @@ def aes_decrypt_file(encrypted_file, key, nonce):
     with open(encrypted_file, 'rb') as f:
         data = f.read()
     
-    nonce = data[:16]           # Extrai o nonce
+    stored_nonce = data[:16]           # Extrai o nonce
     ciphertext = data[16:]      # Extrai o texto encriptado
-    cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
+    cipher = Cipher(algorithms.AES(key), modes.CTR(stored_nonce))
     decryptor = cipher.decryptor()
     
     # Decripta os dados
