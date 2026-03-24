@@ -138,22 +138,24 @@ class SecureRSAHybrid:
         
         return output_file
     
-    def decrypt_file(self, encrypted_file):
-        """Decripta um ficheiro"""
-        with open(encrypted_file, 'rb') as f:
-            r_len = int.from_bytes(f.read(4), 'big')
-            encrypted_r = f.read(r_len)
-            
-            # Ler o número de blocos
-            num_blocks = int.from_bytes(f.read(4), 'big')
-            
-            encrypted_blocks = []
-            remaining = f.read()
-            encrypted_blocks = [
-                remaining[i:i+32] for i in range(0, len(remaining), 32)
-            ]
+def decrypt_file(self, encrypted_file):
+    with open(encrypted_file, 'rb') as f:
+        r_len = int.from_bytes(f.read(4), 'big')
+        encrypted_r = f.read(r_len)
         
-        return self.decrypt(encrypted_r, encrypted_blocks)
+        num_blocks = int.from_bytes(f.read(4), 'big')
+        
+        encrypted_blocks = []
+        for _ in range(num_blocks):
+            block = f.read(32)  # Cada bloco tem 32 bytes
+            encrypted_blocks.append(block)
+        
+        # Último bloco pode ser menor
+        last_block = f.read()
+        if last_block:
+            encrypted_blocks.append(last_block)
+    
+    return self.decrypt(encrypted_r, encrypted_blocks)
 
 def benchmark_construction():
     """
