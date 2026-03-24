@@ -1,21 +1,24 @@
-from os import urandom
+import os
 import timeit
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 def aes_encrypt_file(input_file, key):
+    """
+    Função de encriptação com AES em Counter Mode
+    """
     with open(input_file, 'rb') as f:
         text = f.read()
 
-    nonce = urandom(16)
+    nonce = os.urandom(16) # Gera número não-pseudo-aleatório com 16 bytes
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(text) + encryptor.finalize()
 
-    # Create output filename (add .enc extension)
-    output_file = input_file + '.enc'
+    # Cria o nome do ficheiro de output
+    output_file = input_file + '.encriptado'
     
-    # Write the encrypted data to the new file
-    # We save both nonce and ciphertext (nonce first, then ciphertext)
+    # Escreve os dados encriptados no ficheiro
+    # Guardando ambos o nonce e o texto encriptado
     with open(output_file, 'wb') as f:
         f.write(nonce + ciphertext)
     
@@ -23,38 +26,42 @@ def aes_encrypt_file(input_file, key):
 
 def aes_decrypt_file(encrypted_file, key, nonce):
     """
-    Decrypt a file that was encrypted with AES-CTR mode
+    Função de decriptação com AES Counter Mode
     
-    Args:
-        encrypted_file: Path to the encrypted file
-        key: The same AES key used for encryption (32 bytes for AES-256)
-        nonce: The same nonce used for encryption (16 bytes)
-    
-    Returns:
-        decrypted_text: The decrypted bytes
+    Argumentos:
+        encrypted_file: Ficheiro encriptado
+        key: Mesma usada para a encriptação
+        nonce: Mesmo valor aleatório usado na encriptação (16 bytes)
     """
-    # Read the encrypted file
+
     with open(encrypted_file, 'rb') as f:
         data = f.read()
     
-    nonce = data[:16]           # ✅ Extract nonce
-    ciphertext = data[16:] 
-    # Create cipher in CTR mode with the same key and nonce
+    nonce = data[:16]           # Extrai o nonce
+    ciphertext = data[16:]      # Extrai o texto encriptado
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
     decryptor = cipher.decryptor()
     
-    # Decrypt the data
+    # Decripta os dados
     decrypted_text = decryptor.update(ciphertext) + decryptor.finalize()
     
     return decrypted_text
 
-# Prepare the arguments
-key = urandom(32)
-input_file = 'file_8.txt'
+# Pré-preparação dos arguemntos
+key = os.urandom(32) # Chave de 32 bytes/256 bits
+input_file =  'file_8.txt' # Exemplo
 nonce, ciphertext, output_file = aes_encrypt_file(input_file, key)
 
+# Medição de tempo para encriptação e decriptação dos ficheiros
 
-# Using lambda to pass arguments
+# E
+# R
+# R
+# A
+# D
+# O DAQUI PARA BAIXO
+
+# Tempo de Encriptação
 encryption_time = timeit.timeit(
     lambda: aes_encrypt_file(input_file, key), 
     number=1000  # Run 1000 times
