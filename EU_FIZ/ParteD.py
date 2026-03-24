@@ -2,17 +2,14 @@ import hashlib
 import os
 import time
 
-# File sizes (adjust as needed)
+# Tamanhos dos ficheiros dados em A
 file_sizes = [8, 64, 512, 4096, 32768, 262144, 2097152]
 
-print("SHA-256 HASH TIME MEASUREMENT")
-print("=" * 50)
-
 for size in file_sizes:
-    # Create random data
+    # Cria dados aleatórios
     data = os.urandom(size)
     
-    # Time the hash
+    # Mede a duração do hash
     start = time.perf_counter()
     hash_result = hashlib.sha256(data).hexdigest()
     end = time.perf_counter()
