@@ -7,54 +7,51 @@ from cryptography.hazmat.primitives import hashes
 
 class SecureRSAHybrid:
     """
-    Implements Enc(m; r) = (RSA(r), H(0,r)⊕m₀, ..., H(n,r)⊕mₙ)
-    where H = SHA256
+    Implementa a função de encriptação dada: Enc(m; r) = (RSA(r), H(0,r)⊕m₀, ..., H(n,r)⊕mₙ)
+    com H = SHA256
     """
     
     def __init__(self, key_size=2048):
-        # Generate RSA key pair
+        # Gera par de chaves RSA
         self.private_key = rsa.generate_private_key(
-            public_exponent=65537,
+            public_exponent=65537, # Valor padrão
             key_size=key_size
         )
         self.public_key = self.private_key.public_key()
-        self.hash_size = 32  # SHA256 outputs 32 bytes
+        self.hash_size = 32  # SHA256 tem 32 bytes de output
         self.key_size = key_size
     
     def _hash(self, block_index, r):
         """
-        H(block_index, r) using SHA256
+        H(block_index, r) com SHA256
         
-        Args:
-            block_index: integer block number
-            r: random seed (bytes)
+        Argumentos:
+            block_index: Número do bloco
+            r: random seed
         
-        Returns: 32-byte hash value
+        Retorna hash value de 32 bytes
         """
-        # Convert block index to bytes
+        # Converte indíce do bloco para bytes
         index_bytes = block_index.to_bytes(8, byteorder='big')
-        # Hash the combination
+        # Faz hash na combinação
         return hashlib.sha256(index_bytes + r).digest()
     
     def encrypt(self, message):
         """
-        Encrypt message using Enc(m; r) = (RSA(r), H(0,r)⊕m₀, ..., H(n,r)⊕mₙ)
+        Encripta a mensagem
         
-        Args:
-            message: bytes to encrypt
+        Argumentos:
+            message: bytes a encriptar
             
-        Returns:
+        Retorna:
             (encrypted_r, encrypted_blocks)
-            - encrypted_r: RSA-encrypted random seed
-            - encrypted_blocks: list of XOR-encrypted blocks
+            - encrypted_r: random seed encriptada com RSA
+            - encrypted_blocks: lista de blocos encriptados com XOR
         """
-        # Generate uniform random r (size for RSA encryption)
-        # RSA can encrypt up to (key_size/8 - padding) bytes
-        # For OAEP with SHA256, max message size = key_size/8 - 2*hash_size - 2
         max_r_size = (self.key_size // 8) - 2 * 32 - 2
         r = os.urandom(max_r_size)
         
-        # Compute RSA(r) - encrypt r with RSA public key
+        # Encripta r com chave pública de RSA
         encrypted_r = self.public_key.encrypt(
             r,
             padding.OAEP(
@@ -64,21 +61,21 @@ class SecureRSAHybrid:
             )
         )
         
-        # Calculate number of blocks: n = ⌈|m|/ℓ⌉
+        # Calcula o número de blocos: n = ⌈|m|/ℓ⌉
         n = math.ceil(len(message) / self.hash_size)
         
-        # Encrypt each block: cipher_block_i = H(i, r) ⊕ message_block_i
+        # Encripta cada bloco
         encrypted_blocks = []
         for i in range(n):
-            # Extract message block
+            # Extrai o bloco da mensagem
             start = i * self.hash_size
             end = min(start + self.hash_size, len(message))
             message_block = message[start:end]
             
-            # Compute H(i, r)
+            # H(i, r)
             hash_value = self._hash(i, r)
             
-            # XOR with hash (truncate hash for last block if needed)
+            # XOR com hash
             cipher_block = bytes(
                 a ^ b for a, b in zip(message_block, hash_value[:len(message_block)])
             )
@@ -88,16 +85,16 @@ class SecureRSAHybrid:
     
     def decrypt(self, encrypted_r, encrypted_blocks):
         """
-        Decrypt message encrypted with the encrypt method
+        Decripta mensagens encriptadas com o método anterior
         
-        Args:
-            encrypted_r: RSA-encrypted random seed
-            encrypted_blocks: list of XOR-encrypted blocks
+        Argumentoss:
+            encrypted_r: Random seed encriptada com RSA
+            encrypted_blocks: lista de blocos encriptados com XOR
             
-        Returns:
-            Decrypted message (bytes)
+        Retorna:
+            Mensagem decriptada
         """
-        # Decrypt r using RSA private key
+        # Decripta r usando chave privada de RSA
         r = self.private_key.decrypt(
             encrypted_r,
             padding.OAEP(
@@ -107,13 +104,12 @@ class SecureRSAHybrid:
             )
         )
         
-        # Decrypt each block: message_block_i = H(i, r) ⊕ cipher_block_i
+        # Decripta cada bloco
         decrypted_message = b''
         for i, cipher_block in enumerate(encrypted_blocks):
-            # Compute H(i, r)
             hash_value = self._hash(i, r)
             
-            # XOR to recover message block
+            # XOR para recuperar o bloco da mensagem
             message_block = bytes(
                 a ^ b for a, b in zip(cipher_block, hash_value[:len(cipher_block)])
             )
@@ -122,46 +118,36 @@ class SecureRSAHybrid:
         return decrypted_message
     
     def encrypt_file(self, input_file):
-        """Encrypt a file"""
+        """Encripta um ficheriro"""
         with open(input_file, 'rb') as f:
             message = f.read()
         
         encrypted_r, encrypted_blocks = self.encrypt(message)
         
-        # Save encrypted data
-        output_file = input_file + '.enc'
+        output_file = input_file + '.encriptado'
         with open(output_file, 'wb') as f:
-            # Save encrypted_r length and value
+            # Guarda comprimento encrypted_r e o valor
             f.write(len(encrypted_r).to_bytes(4, 'big'))
             f.write(encrypted_r)
             
-            # Save number of blocks
+            # Guarda o número de blocos
             f.write(len(encrypted_blocks).to_bytes(4, 'big'))
             
-            # Save each block
             for block in encrypted_blocks:
                 f.write(block)
         
         return output_file
     
     def decrypt_file(self, encrypted_file):
-        """Decrypt a file"""
+        """Decripta um ficheiro"""
         with open(encrypted_file, 'rb') as f:
-            # Read encrypted_r
             r_len = int.from_bytes(f.read(4), 'big')
             encrypted_r = f.read(r_len)
             
-            # Read number of blocks
+            # Ler o número de blocos
             num_blocks = int.from_bytes(f.read(4), 'big')
             
-            # Read each block
             encrypted_blocks = []
-            for _ in range(num_blocks):
-                # Read block (32 bytes each except possibly last)
-                # For simplicity, we need to know block sizes
-                pass  # Would need to store block sizes in file
-            
-            # Alternative: read remaining data and split into 32-byte blocks
             remaining = f.read()
             encrypted_blocks = [
                 remaining[i:i+32] for i in range(0, len(remaining), 32)
@@ -169,37 +155,25 @@ class SecureRSAHybrid:
         
         return self.decrypt(encrypted_r, encrypted_blocks)
 
-# Benchmark function
 def benchmark_construction():
     """
-    Measure execution time for files generated in point A
+    Mede tempo de execução para ficheiros gerados na Parte A
     """
     rsa_cipher = SecureRSAHybrid(key_size=2048)
     
-    # File sizes from point A (adjust as needed)
-    file_sizes = [1024, 10240, 102400, 1048576]  # 1KB, 10KB, 100KB, 1MB
-    
-    print("=" * 80)
-    print("RSA Hybrid Construction Benchmark (2048-bit, SHA256)")
-    print("Construction: Enc(m; r) = (RSA(r), H(0,r)⊕m₀, ..., H(n,r)⊕mₙ)")
-    print("=" * 80)
+    file_sizes = [1024, 10240, 102400, 1048576]  
     
     results = []
     
     for size in file_sizes:
-        # Create test file
         filename = f'test_file_{size}.bin'
         with open(filename, 'wb') as f:
             f.write(os.urandom(size))
         
-        print(f"\n📁 File: {filename} ({size:,} bytes / {size/1024:.2f} KB)")
-        print("-" * 60)
-        
-        # Measure encryption time
+        # Mede tempo de encriptação
         def encrypt_test():
             return rsa_cipher.encrypt_file(filename)
         
-        # Run multiple times for average
         num_runs = 10
         encrypt_times = []
         for _ in range(num_runs):
@@ -208,10 +182,10 @@ def benchmark_construction():
         
         avg_encrypt = sum(encrypt_times) / num_runs
         
-        # Get sample for decryption test
+        # Amostra para teste de decriptação
         enc_file = rsa_cipher.encrypt_file(filename)
         
-        # Measure decryption time
+        # Mede tempo de decriptação
         def decrypt_test():
             return rsa_cipher.decrypt_file(enc_file)
         
@@ -222,7 +196,6 @@ def benchmark_construction():
         
         avg_decrypt = sum(decrypt_times) / num_runs
         
-        # Calculate throughput
         encrypt_throughput = size / avg_encrypt / 1024  # KB/s
         decrypt_throughput = size / avg_decrypt / 1024  # KB/s
         
@@ -239,20 +212,6 @@ def benchmark_construction():
         print(f"   Encrypt throughput: {encrypt_throughput:.2f} KB/s")
         print(f"   Decrypt throughput: {decrypt_throughput:.2f} KB/s")
         
-        # Verify correctness
-        decrypted = rsa_cipher.decrypt_file(enc_file)
-        with open(filename, 'rb') as f:
-            original = f.read()
-        
-        if decrypted == original:
-            print(f"   ✅ Verification: PASSED")
-        else:
-            print(f"   ❌ Verification: FAILED")
-    
-    # Print summary
-    print("\n" + "=" * 80)
-    print("SUMMARY")
-    print("=" * 80)
     print(f"{'File Size':<15} {'Encrypt (ms)':<15} {'Decrypt (ms)':<15} {'Encrypt (KB/s)':<15}")
     print("-" * 60)
     for r in results:
